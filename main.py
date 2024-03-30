@@ -12,6 +12,7 @@ class User(BaseModel):
      
 users= [User(id=1), User(id=2) ]
 
+#Esta es una variable de respaldo en caso de que la plataforma en Mongo no funcione
 jsonconsultas= [
     {"Fecha":"2018-02-01","Total consultas":502},{"Fecha":"2018-02-02","Total consultas":532},
     {"Fecha":"2018-02-03","Total consultas":525},{"Fecha":"2018-02-04","Total consultas":398},
@@ -99,94 +100,70 @@ jsonconsultas= [
     {"Fecha":"2023-02-26","Total consultas":413},{"Fecha":"2023-02-27","Total consultas":419},
     {"Fecha":"2023-02-28","Total consultas":508}]
 
+#En esta variable se guardaran el JSON generado por la base de datos
 jsonconsultas2=[]
 
-def search_user(id:int):
-    algosfiltrados = filter(lambda user: user.id==id,users)
-    try:
-        return list(algosfiltrados)[0]
-    except:
-        return {"error":"sin elementos"}
-
+#Declaración de FASTAPI
 app = FastAPI();
 
+#Definición de punto de toma de datos
 @app.get("/getconsultas/")
 async def getconsultas():
-        aniosarray=[                    
-             {"Anio":2018,"Total":0},
-             {"Anio":2019,"Total":0},
-             {"Anio":2020,"Total":0},
-             {"Anio":2021,"Total":0},
-             {"Anio":2022,"Total":0},
-             {"Anio":2023,"Total":0},
-             {"Anio":2024,"Total":0},
-        ]
-
-        client = MongoClient()
-        db = client['local']
-
-        collection = db['clinicaconsultas']
-        for document in collection.find():
-            # iterate the cursor
-            jsonconsultas2.append(document)
-
-        #print(jsonconsultas2) 
-        client.close()
-
-        for x in jsonconsultas2:
-            #print(f"CASO {x['Fecha']}")
-           
-            for anio in aniosarray:
-                
-                valor= x['Fecha']
-                #print(f"Comparando {valor.split('-')[0]} con {anio['Anio']}")
-                if int(valor.split('-')[0])==anio['Anio']:
-                    #print("SI")
-                 
-                    anio['Total']=anio['Total']+x['Total consultas'] 
-                    break
-
+        #Este comando try ayuda a que el programa no se caiga, y solo de un error 500 en el peor de los casos
         try:
+            #Arreglo final que se entregará al front, tiene las consultas capturadas y su respectivo año
+            aniosarray=[                    
+                {"Anio":2018,"Total":0},
+                {"Anio":2019,"Total":0},
+                {"Anio":2020,"Total":0},
+                {"Anio":2021,"Total":0},
+                {"Anio":2022,"Total":0},
+                {"Anio":2023,"Total":0},
+                {"Anio":2024,"Total":0},
+            ]
+
+            #Inicio con transaccion en MongoDB para toma de datos
+            client = MongoClient()
+            db = client['local']
+            collection = db['clinicaconsultas']
+
+            #Proceso de toma de datos
+            for document in collection.find():
+                jsonconsultas2.append(document)
+            client.close()
+
+            #En esta seccion solo da prioridad a los años para poder agrupar a las consultas en el total, usando un Split
+            for x in jsonconsultas2:
+                for anio in aniosarray:              
+                    valor= x['Fecha']
+                    if int(valor.split('-')[0])==anio['Anio']:
+                        anio['Total']=anio['Total']+x['Total consultas'] 
+                        break
+        
+        
+            #En esta seccion se hace un proceso de toma de datos del archivo XLSX
             dataframe1 = pd.read_excel('consultas_febrero_2024.xlsx')
 
-            #print(dataframe1)  
-            #Formato Columnas/Filas
             i = 1
             j=0
             contador=0
             while i <= 29:
-                
                 j=0
                 while j <= 4:
-                    #print(f"Viendo columna {i} y fila {j}" )
-                    #print(f"CASO {dataframe1[i][j]}" )
                     contador=contador+dataframe1[i][j]
                     j+=1
-                i += 1               
+                i += 1       
             aniosarray[6]['Total']=int(contador)
-
+            #Limpieza de variable local y envio de datos para el front
+            jsonconsultas2.clear()
             return list(aniosarray)
         except Exception as e: 
+            #Este exception mostrará un error (500 en el peor de los casos)
             print(e)
             return {"error":"sin elementos"}
 
 
-@app.get("/prueba/{id}")
-async def prueba(id:int):
-    return search_user(id)
-    
-@app.get("/prueba1/")
-async def prueba(id:int):
 
-    return search_user(id)
-
-@app.get("/adduser/")
-async def adduser(user:User):
-
-        if type(search_user(user.id))==User:
-            return {"error": "Usuario ya existe"}
-        else:
-            users.append(user)
 
     
 
