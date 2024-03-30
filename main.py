@@ -1,16 +1,6 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
 import pandas as pd
-import os
 from pymongo import MongoClient
-
-# read by default 1st sheet of an excel file
-
-
-class User(BaseModel):
-    id: int
-     
-users= [User(id=1), User(id=2) ]
 
 #Esta es una variable de respaldo en caso de que la plataforma en Mongo no funcione
 jsonconsultas= [
@@ -141,9 +131,8 @@ async def getconsultas():
                         break
         
         
-            #En esta seccion se hace un proceso de toma de datos del archivo XLSX
+            #En esta seccion se hace un proceso de toma de datos del archivo XLSX. I=Columnas, J=Filas
             dataframe1 = pd.read_excel('consultas_febrero_2024.xlsx')
-
             i = 1
             j=0
             contador=0
@@ -154,6 +143,7 @@ async def getconsultas():
                     j+=1
                 i += 1       
             aniosarray[6]['Total']=int(contador)
+
             #Limpieza de variable local y envio de datos para el front
             jsonconsultas2.clear()
             return list(aniosarray)
